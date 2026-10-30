@@ -1,0 +1,149 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # Chỉ chạy job migrations khi đã có file migration.
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      migrations: ${{ steps.f.outputs.migrations }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: f
+        run: |
+          if ls migrations/postgres/*.sql >/dev/null 2>&1; then
+            echo "migrations=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "migrations=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  compose:
+    name: Validate docker-compose
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cp .env.example .env
+      - run: docker compose --profile clickhouse --profile kafka --profile observability config -q
+
+  # Gate theo go.mod. Module chưa có dependency thì chưa có go.sum, khi đó
+  # bước cache của setup-go chỉ cảnh báo.
+  go:
+    name: Go (${{ matrix.service }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [ingest, worker]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Kiểm tra service có code chưa
+        id: gate
+        run: |
+          if [ -f services/${{ matrix.service }}/go.mod ]; then echo "run=true" >> "$GITHUB_OUTPUT"; else echo "run=false" >> "$GITHUB_OUTPUT"; fi
+      - uses: actions/setup-go@v5
+        if: steps.gate.outputs.run == 'true'
+        with:
+          go-version-file: services/${{ matrix.service }}/go.mod
+          cache-dependency-path: services/${{ matrix.service }}/go.sum
+      - uses: golangci/golangci-lint-action@v6
+        if: steps.gate.outputs.run == 'true'
+        with:
+          working-directory: services/${{ matrix.service }}
+      - name: Test
+        if: steps.gate.outputs.run == 'true'
+        working-directory: services/${{ matrix.service }}
+        run: go test -race -count=1 ./...
+      - name: Build
+        if: steps.gate.outputs.run == 'true'
+        working-directory: services/${{ matrix.service }}
+        run: go build ./...
+
+  # Quy ước: package có package.json thì bắt buộc có script lint và build
+  # (test tuỳ chọn). Thiếu script thì job đỏ để phát hiện sớm, không bỏ qua âm thầm.
+  node:
+    name: Node (${{ matrix.dir }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        dir: [services/api, web, sdk]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Kiểm tra thành phần có code chưa
+        id: gate
+        run: |
+          if [ -f ${{ matrix.dir }}/package.json ]; then echo "run=true" >> "$GITHUB_OUTPUT"; else echo "run=false" >> "$GITHUB_OUTPUT"; fi
+      - uses: pnpm/action-setup@v4
+        if: steps.gate.outputs.run == 'true'
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        if: steps.gate.outputs.run == 'true'
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: "**/pnpm-lock.yaml"
+      - name: Install
+        if: steps.gate.outputs.run == 'true'
+        working-directory: ${{ matrix.dir }}
+        run: pnpm install --frozen-lockfile
+      - name: Lint
+        if: steps.gate.outputs.run == 'true'
+        working-directory: ${{ matrix.dir }}
+        run: pnpm run lint
+      - name: Test
+        if: steps.gate.outputs.run == 'true'
+        working-directory: ${{ matrix.dir }}
+        run: pnpm run test --if-present
+      - name: Build
+        if: steps.gate.outputs.run == 'true'
+        working-directory: ${{ matrix.dir }}
+        run: pnpm run build
+
+  migrations:
+    name: Postgres migrations (up/down/up)
+    needs: detect
+    if: needs.detect.outputs.migrations == 'true'
+    runs-on: ubuntu-latest
+    env:
+      PG_DSN: postgres://tracker:tracker@localhost:5432/tracker?sslmode=disable
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: tracker
+          POSTGRES_PASSWORD: tracker
+          POSTGRES_DB: tracker
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U tracker"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - run: |
+          go install github.com/pressly/goose/v3/cmd/goose@v3.29.0
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+      - name: up
+        run: make migrate-pg-up
+      - name: status
+        run: make migrate-pg-status
+      - name: down toàn bộ rồi up lại
+        run: |
+          goose -dir migrations/postgres postgres "$PG_DSN" reset
+          make migrate-pg-up

@@ -41,6 +41,8 @@ Chi tiết kiến trúc, schema và quyết định thiết kế nằm trong [do
 .
 ├── docker-compose.yml
 ├── Makefile
+├── LICENSE
+├── .github/workflows/ci.yml
 ├── .env.example
 ├── docs/PLAN.md          # kế hoạch toàn bộ dự án
 ├── sdk/                  # JS tracking SDK
@@ -128,11 +130,11 @@ make logs         # xem log
 
 | Giai đoạn | Chủ đề | Trạng thái |
 |---|---|---|
-| 0 | Khởi tạo repo, Docker, tài liệu | Đang làm |
+| 0 | Khởi tạo repo, Docker, tài liệu, CI | Gần xong (còn `git init` và chạy CI lần đầu) |
 | 1 | Asynchronous Processing (Redis Streams) | Chưa bắt đầu |
 | 2 | Analytics & Alerting (ClickHouse) | Chưa bắt đầu |
 | 3 | Distributed Streaming (Kafka) | Chưa bắt đầu |
 
 ## Giấy phép
 
-Chưa xác định (đề xuất MIT).
+MIT, xem [LICENSE](LICENSE).
