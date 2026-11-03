@@ -1,0 +1,14 @@
+{
+  "name": "analytics-tracker",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Analytics Tracker monorepo for website events, analytics, and alerting.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@12.16.1",
+  "scripts": {
+    "check:compose": "docker compose --profile clickhouse --profile kafka --profile observability config -q"
+  }
+}

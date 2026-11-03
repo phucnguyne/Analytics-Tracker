@@ -2,7 +2,7 @@
 
 Hệ thống thu thập và phân tích lưu lượng website (click, pageview, hiệu năng trang) với dashboard real-time và cảnh báo. Dự án học tập/portfolio tập trung vào **xử lý bất đồng bộ, dữ liệu time-series và streaming phân tán**, với Go làm service chịu tải cao và Node.js lo phần nghiệp vụ.
 
-> Trạng thái: **Giai đoạn 0 (khởi tạo hạ tầng)**. Xem lộ trình đầy đủ ở [docs/PLAN.md](docs/PLAN.md).
+> Trạng thái: **Giai đoạn 1 (Asynchronous Processing)**. Xem lộ trình đầy đủ ở [docs/PLAN.md](docs/PLAN.md).
 
 ## Tính năng mục tiêu
 
@@ -67,6 +67,22 @@ Chi tiết kiến trúc, schema và quyết định thiết kế nằm trong [do
 - k6 (cho load test)
 - `make` (tuỳ chọn, có thể chạy lệnh `docker compose` trực tiếp)
 
+### Package manager
+
+Repo dùng **pnpm 12** cho toàn bộ thành phần JavaScript/TypeScript. Node.js và pnpm
+được khai báo trong [package.json](package.json); dùng đúng package manager để
+giữ lockfile và hành vi cài dependency nhất quán:
+
+```bash
+pnpm --version
+pnpm install
+pnpm run check:compose
+```
+
+Các package con (`services/api`, `web`, `sdk`) sẽ có `package.json` riêng khi
+được triển khai ở các giai đoạn tiếp theo. Không dùng `npm install` hoặc
+`yarn install` trong repo này.
+
 ## Chạy nhanh hạ tầng
 
 ```bash
@@ -130,8 +146,8 @@ make logs         # xem log
 
 | Giai đoạn | Chủ đề | Trạng thái |
 |---|---|---|
-| 0 | Khởi tạo repo, Docker, tài liệu, CI | Gần xong (còn `git init` và chạy CI lần đầu) |
-| 1 | Asynchronous Processing (Redis Streams) | Chưa bắt đầu |
+| 0 | Khởi tạo repo, Docker, tài liệu, CI | Hoàn thành |
+| 1 | Asynchronous Processing (Redis Streams) | Đang làm |
 | 2 | Analytics & Alerting (ClickHouse) | Chưa bắt đầu |
 | 3 | Distributed Streaming (Kafka) | Chưa bắt đầu |
 

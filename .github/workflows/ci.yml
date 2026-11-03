@@ -87,7 +87,7 @@ jobs:
       - uses: pnpm/action-setup@v4
         if: steps.gate.outputs.run == 'true'
         with:
-          version: 9
+          version: 12
       - uses: actions/setup-node@v4
         if: steps.gate.outputs.run == 'true'
         with:

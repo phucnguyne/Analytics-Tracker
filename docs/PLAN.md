@@ -117,17 +117,18 @@ Server làm giàu: `country`, `device`, `browser`, `os`, `received_at`. Không l
 
 ## 6. Lộ trình chi tiết
 
-### Giai đoạn 0: Khởi tạo (hiện tại)
+### Giai đoạn 0: Khởi tạo (HOÀN THÀNH)
 
 - [x] README, docker-compose (profiles), Makefile, `.env.example`
 - [x] Cấu trúc thư mục monorepo
 - [x] License MIT (`LICENSE`)
 - [x] CI cơ bản (`.github/workflows/ci.yml`): validate compose, lint/test/build cho Go và Node (tự bỏ qua phần chưa có code), kiểm tra migration up/down/up trên Postgres
-- [ ] `git init`, push lên GitHub và xác nhận CI chạy xanh lần đầu
+- [x] `git init`, push lên GitHub và xác nhận CI chạy lần đầu
 - [x] Chọn công cụ migration: `goose` (ADR #9)
 - [x] Target `migrate-*` trong Makefile, đã kiểm tra với Postgres 16 thật (new, up, status, down, up lại)
+- [x] Khai báo Node.js/pnpm và script kiểm tra compose ở `package.json`
 
-### Giai đoạn 1: Asynchronous Processing (Redis Streams)
+### Giai đoạn 1: Asynchronous Processing (Redis Streams) (HIỆN TẠI)
 
 **Mục tiêu:** pipeline bền vững, không mất và không trùng dữ liệu.
 
